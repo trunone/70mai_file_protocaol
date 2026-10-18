@@ -2,6 +2,7 @@ package com.github.trunone.mai70protocol.sample
 
 import android.os.Bundle
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var editIp: EditText
     private lateinit var editPort: EditText
+    private lateinit var chkHttpLogging: CheckBox
     private lateinit var txtLog: TextView
     private lateinit var scrollLog: ScrollView
 
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity() {
 
         editIp = findViewById(R.id.editIp)
         editPort = findViewById(R.id.editPort)
+        chkHttpLogging = findViewById(R.id.chkHttpLogging)
         txtLog = findViewById(R.id.txtLog)
         scrollLog = findViewById(R.id.scrollLog)
 
@@ -58,7 +61,15 @@ class MainActivity : AppCompatActivity() {
 
         activityScope.launch {
             try {
-                val transport = AndroidNetworkTransport(this@MainActivity, defaultCameraIp = host)
+                val transport = AndroidNetworkTransport(
+                    context = this@MainActivity,
+                    defaultCameraIp = host,
+                    onHttpLog = if (chkHttpLogging.isChecked) { logMsg ->
+                        activityScope.launch(Dispatchers.Main) {
+                            log("[HTTP] $logMsg")
+                        }
+                    } else null
+                )
                 val client = Mai70Client(transport = transport, host = host, port = port)
                 block(client)
             } catch (e: Exception) {

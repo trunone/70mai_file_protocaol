@@ -26,11 +26,13 @@ import java.util.concurrent.TimeUnit
  * @param context Android Application Context.
  * @param defaultCameraIp Configured camera IP address (default: "192.168.0.1").
  * @param baseClient Optional customized base OkHttpClient.
+ * @param onHttpLog Optional callback for logging HTTP request and response details in real time.
  */
 class AndroidNetworkTransport(
     context: Context,
     private val defaultCameraIp: String = "192.168.0.1",
-    baseClient: OkHttpClient = defaultOkHttpClient
+    baseClient: OkHttpClient = defaultOkHttpClient,
+    var onHttpLog: ((String) -> Unit)? = null
 ) : HttpTransport {
 
     private val appContext: Context = context.applicationContext
@@ -152,37 +154,48 @@ class AndroidNetworkTransport(
         }
     }
 
-    private fun buildRequest(url: String): Request {
+    private fun buildRequest(url: String, method: String = "GET"): Request {
         return Request.Builder()
             .url(url)
+            .method(method, null)
             .header("User-Agent", "70mai")
             .build()
+    }
+
+    private fun logHttp(message: String) {
+        onHttpLog?.invoke(message)
     }
 
     override suspend fun get(url: String): String? = withContext(Dispatchers.IO) {
         updateNetworkInfo()
         val request = buildRequest(url)
+        logHttp("--> GET $url")
 
         // Try with socket-factory bound camera client if available
         if (url.contains(defaultCameraIp) && cameraClient != null) {
             try {
                 cameraClient!!.newCall(request).execute().use { response ->
+                    val body = response.body?.string()
+                    logHttp("<-- ${response.code} ${response.message} (${body?.length ?: 0} bytes)\n$body")
                     if (response.isSuccessful) {
-                        return@withContext response.body?.string()
+                        return@withContext body
                     }
                 }
-            } catch (_: IOException) {
-                // Fall back to default client
+            } catch (e: IOException) {
+                logHttp("<-- GET failed on camera bound interface: ${e.message}")
             }
         }
 
         // Default client fallback
         try {
             client.newCall(request).execute().use { response ->
+                val body = response.body?.string()
+                logHttp("<-- ${response.code} ${response.message} (${body?.length ?: 0} bytes)\n$body")
                 if (!response.isSuccessful) return@withContext null
-                response.body?.string()
+                body
             }
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            logHttp("<-- GET failed: ${e.message}")
             null
         }
     }
@@ -190,22 +203,25 @@ class AndroidNetworkTransport(
     override suspend fun openStream(url: String): InputStream? = withContext(Dispatchers.IO) {
         updateNetworkInfo()
         val request = buildRequest(url)
+        logHttp("--> OPEN STREAM $url")
 
         if (url.contains(defaultCameraIp) && cameraClient != null) {
             try {
                 val response = cameraClient!!.newCall(request).execute()
+                logHttp("<-- STREAM ${response.code} ${response.message}")
                 if (response.isSuccessful && response.body != null) {
                     return@withContext response.body!!.byteStream()
                 } else {
                     response.close()
                 }
-            } catch (_: IOException) {
-                // Fall back to default client
+            } catch (e: IOException) {
+                logHttp("<-- OPEN STREAM failed on camera interface: ${e.message}")
             }
         }
 
         try {
             val response = client.newCall(request).execute()
+            logHttp("<-- STREAM ${response.code} ${response.message}")
             if (!response.isSuccessful) {
                 response.close()
                 return@withContext null
@@ -215,7 +231,8 @@ class AndroidNetworkTransport(
                 return@withContext null
             }
             body.byteStream()
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            logHttp("<-- OPEN STREAM failed: ${e.message}")
             null
         }
     }
@@ -223,25 +240,28 @@ class AndroidNetworkTransport(
     override suspend fun probe(url: String): Pair<Long, String?>? = withContext(Dispatchers.IO) {
         updateNetworkInfo()
         val activeClient = getOkHttpClientForUrl(url)
+        logHttp("--> PROBE $url")
 
         // Try HEAD request first
         try {
             val headRequest = Request.Builder().url(url).header("User-Agent", "70mai").head().build()
             activeClient.newCall(headRequest).execute().use { response ->
+                logHttp("<-- HEAD ${response.code} ${response.message}")
                 if (response.isSuccessful) {
                     val length = response.header("Content-Length")?.toLongOrNull() ?: 0L
                     val lastModified = response.header("Last-Modified")
                     return@withContext Pair(length, lastModified)
                 }
             }
-        } catch (_: Exception) {
-            // Fall back to Range request
+        } catch (e: Exception) {
+            logHttp("<-- HEAD probe failed: ${e.message}")
         }
 
         // Range request fallback
         try {
             val rangeRequest = Request.Builder().url(url).header("User-Agent", "70mai").header("Range", "bytes=0-0").build()
             activeClient.newCall(rangeRequest).execute().use { response ->
+                logHttp("<-- RANGE ${response.code} ${response.message}")
                 if (response.isSuccessful || response.code == 416) {
                     val contentRange = response.header("Content-Range")
                     val size = if (contentRange != null && contentRange.contains("/")) {
@@ -253,8 +273,8 @@ class AndroidNetworkTransport(
                     return@withContext Pair(size, lastModified)
                 }
             }
-        } catch (_: Exception) {
-            // Ignore
+        } catch (e: Exception) {
+            logHttp("<-- RANGE probe failed: ${e.message}")
         }
         null
     }

@@ -38,6 +38,14 @@
             android:text="80" />
     </LinearLayout>
 
+    <CheckBox
+        android:id="@+id/chkHttpLogging"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Log HTTP Requests &amp; Responses"
+        android:checked="true"
+        android:layout_marginBottom="8dp" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
