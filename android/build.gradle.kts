@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "me.zhanghai.android.files.provider.mai70.protocol.android"
+    namespace = "com.mai70.protocol.android"
     compileSdk = 34
 
     defaultConfig {

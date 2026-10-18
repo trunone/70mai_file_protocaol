@@ -1,4 +1,4 @@
-package me.zhanghai.android.files.provider.mai70.protocol.models
+package com.mai70.protocol.models
 
 import java.time.Instant
 

@@ -1,10 +1,18 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
-import me.zhanghai.android.files.provider.mai70.protocol.models.Category
-import me.zhanghai.android.files.provider.mai70.protocol.models.FileEntry
+import com.mai70.protocol.models.Authority
+import com.mai70.protocol.models.Category
+import com.mai70.protocol.models.FileEntry
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.math.BigInteger
 import java.security.MessageDigest
-import me.zhanghai.android.files.provider.mai70.protocol.models.Authority
 
 /**
  * Low-level protocol constants, signature generators, CGI URL builders, and JSON response parsers.
@@ -13,6 +21,12 @@ object Mai70Protocol {
 
     /** Default salt string used in pairing and authentication algorithms */
     const val PAIRING_SALT: String = "73VpsAfdety8FDd0"
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        coerceInputValues = true
+    }
 
     /**
      * Calculates MD5 hash of an input string.
@@ -58,21 +72,15 @@ object Mai70Protocol {
     }
 
     /**
-     * Extracts simple string value from JSON without external heavy dependencies.
+     * Extracts string value from JSON object for given key.
      */
-    fun extractJsonValue(json: String, key: String): String {
+    fun extractJsonValue(jsonText: String, key: String): String {
         return try {
-            val searchKey = "\"$key\""
-            if (!json.contains(searchKey)) return ""
-
-            val afterKey = json.substringAfter(searchKey).trim().removePrefix(":")
-            val trimmed = afterKey.trim()
-            if (trimmed.startsWith("\"")) {
-                trimmed.substringAfter("\"").substringBefore("\"")
-            } else {
-                trimmed.split(Regex("[,}]"))[0].trim().removeSurrounding("\"")
-            }
-        } catch (e: Exception) {
+            val sanitized = sanitizeJsonResponse(jsonText)
+            val jsonObject = json.parseToJsonElement(sanitized).jsonObject
+            val element = jsonObject[key] ?: return ""
+            element.jsonPrimitive.content
+        } catch (_: Exception) {
             ""
         }
     }
@@ -101,22 +109,20 @@ object Mai70Protocol {
 
         val counts = mutableMapOf<Category, Int>()
         try {
-            if (sanitized.contains("\"Result\":") && sanitized.contains("[")) {
-                val arrayPart = sanitized.substringAfter("\"Result\":").substringAfter("[").substringBefore("]")
-                val objects = arrayPart.split("}")
-                for (obj in objects) {
-                    if (!obj.contains("{")) continue
-                    val typeStr = extractJsonValue(obj, "type")
-                    val countStr = extractJsonValue(obj, "count")
-                    val type = typeStr.toIntOrNull()
-                    val count = countStr.toIntOrNull()
-                    if (type != null && count != null) {
-                        counts[Category.fromType(type)] = count
-                    }
+            val jsonObject = json.parseToJsonElement(sanitized).jsonObject
+            val resultArray = jsonObject["Result"]?.jsonArray ?: return emptyMap()
+            for (element in resultArray) {
+                val item = element.jsonObject
+                val typeStr = item["type"]?.jsonPrimitive?.contentOrNull
+                val countStr = item["count"]?.jsonPrimitive?.contentOrNull
+                val type = typeStr?.toIntOrNull()
+                val count = countStr?.toIntOrNull()
+                if (type != null && count != null) {
+                    counts[Category.fromType(type)] = count
                 }
             }
-        } catch (e: Exception) {
-            // Ignore parse errors
+        } catch (_: Exception) {
+            // Fallback
         }
         return counts
     }
@@ -131,28 +137,24 @@ object Mai70Protocol {
 
         val entries = mutableListOf<FileEntry>()
         try {
-            if (sanitized.contains("\"Result\":") && sanitized.contains("[")) {
-                val arrayPart = sanitized.substringAfter("\"Result\":").substringAfter("[").substringBeforeLast("]")
-                val objects = arrayPart.split("},")
-                for (rawObj in objects) {
-                    val obj = if (rawObj.startsWith("{")) rawObj else "{$rawObj"
-                    if (!obj.contains("path") && !obj.contains("name")) continue
-                    val path = extractJsonValue(obj, "path")
-                    val name = extractJsonValue(obj, "name")
-                    val sizeStr = extractJsonValue(obj, "size")
-                    var size = sizeStr.toLongOrNull() ?: 0L
-                    if (size < 0) {
-                        size += (4L * 1024 * 1024 * 1024)
-                    }
-                    if (name.isNotEmpty()) {
-                        entries.add(FileEntry(path = path, name = name, size = size, category = category))
-                    }
+            val jsonObject = json.parseToJsonElement(sanitized).jsonObject
+            val resultArray = jsonObject["Result"]?.jsonArray ?: return null
+            for (element in resultArray) {
+                val item = element.jsonObject
+                val path = item["path"]?.jsonPrimitive?.contentOrNull ?: ""
+                val name = item["name"]?.jsonPrimitive?.contentOrNull ?: ""
+                val sizeStr = item["size"]?.jsonPrimitive?.contentOrNull ?: "0"
+                var size = sizeStr.toLongOrNull() ?: 0L
+                if (size < 0) {
+                    size += (4L * 1024 * 1024 * 1024)
                 }
-                return entries
+                if (name.isNotEmpty()) {
+                    entries.add(FileEntry(path = path, name = name, size = size, category = category))
+                }
             }
-        } catch (e: Exception) {
+            return entries
+        } catch (_: Exception) {
             return null
         }
-        return null
     }
 }

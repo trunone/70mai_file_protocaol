@@ -1,9 +1,9 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
 import kotlinx.coroutines.runBlocking
-import me.zhanghai.android.files.provider.mai70.protocol.http.HttpTransport
-import me.zhanghai.android.files.provider.mai70.protocol.models.Category
-import me.zhanghai.android.files.provider.mai70.protocol.models.FileEntry
+import com.mai70.protocol.http.HttpTransport
+import com.mai70.protocol.models.Category
+import com.mai70.protocol.models.FileEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue

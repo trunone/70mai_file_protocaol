@@ -1,6 +1,6 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
-import me.zhanghai.android.files.provider.mai70.protocol.models.Authority
+import com.mai70.protocol.models.Authority
 
 /**
  * Persistence abstraction for 70mai session tokens.

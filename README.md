@@ -1,6 +1,6 @@
 # 70mai-protocol
 
-`70mai-protocol` is a lightweight, pure-Kotlin cross-platform shared library that extracts and standardizes the reverse-engineered Wi-Fi/HTTP CGI protocol for 70mai dashcams. It allows Kotlin/JVM and Android applications to easily pair, browse, stream, download, and delete files on 70mai camera devices.
+`70mai-protocol` is a generic, lightweight, pure-Kotlin shared library that implements the reverse-engineered Wi-Fi/HTTP CGI protocol for 70mai dashcams. It enables JVM and Android applications to pair, browse, stream, download, and delete media files on 70mai devices.
 
 ---
 
@@ -32,7 +32,7 @@ The library is organized into two primary modules:
 
 ## License
 
-This project is released under the **GNU General Public License v3.0 (GPLv3)** to maintain full compatibility with both upstream projects (*MaterialFiles* and *70mai_file_sync*).
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
 
 ---
 
@@ -61,15 +61,15 @@ This project is released under the **GNU General Public License v3.0 (GPLv3)** t
 
 ## Usage Examples
 
-### 1. 70mai_file_sync Style (Full Pairing + Auto-Sync)
+### Android Integration (Automatic Wi-Fi Network Binding)
 
 ```kotlin
-import me.zhanghai.android.files.provider.mai70.protocol.Mai70Client
-import me.zhanghai.android.files.provider.mai70.protocol.android.AndroidNetworkTransport
-import me.zhanghai.android.files.provider.mai70.protocol.models.Category
+import com.mai70.protocol.Mai70Client
+import com.mai70.protocol.android.AndroidNetworkTransport
+import com.mai70.protocol.models.Category
 
 suspend fun syncDashcamFiles(context: Context) {
-    // 1. Create Android HTTP transport (handles mobile data / camera Wi-Fi routing automatically)
+    // 1. Create Android HTTP transport (routes requests through camera Wi-Fi even with cellular data enabled)
     val transport = AndroidNetworkTransport(context, defaultCameraIp = "192.168.0.1")
 
     // 2. Instantiate client
@@ -95,20 +95,20 @@ suspend fun syncDashcamFiles(context: Context) {
 }
 ```
 
-### 2. MaterialFiles Style (Custom TokenStore / Authenticator)
+### Pure Kotlin / JVM Integration
 
 ```kotlin
-import me.zhanghai.android.files.provider.mai70.protocol.Mai70Client
-import me.zhanghai.android.files.provider.mai70.protocol.TokenStore
-import me.zhanghai.android.files.provider.mai70.protocol.models.Authority
-import me.zhanghai.android.files.provider.mai70.protocol.models.Category
+import com.mai70.protocol.Mai70Client
+import com.mai70.protocol.TokenStore
+import com.mai70.protocol.http.HttpTransport
+import com.mai70.protocol.models.Authority
+import com.mai70.protocol.models.Category
 
-class PersistentTokenStore(private val prefs: SharedPreferences) : TokenStore {
-    override fun getToken(authority: Authority): String? =
-        prefs.getString("token_${authority.host}_${authority.port}", null)
-
+class FileTokenStore : TokenStore {
+    private var token: String? = null
+    override fun getToken(authority: Authority): String? = token
     override fun saveToken(authority: Authority, token: String) {
-        prefs.edit().putString("token_${authority.host}_${authority.port}", token).apply()
+        this.token = token
     }
 }
 
@@ -136,56 +136,23 @@ suspend fun browseFileSystem(transport: HttpTransport, tokenStore: TokenStore) {
 
 ## Testing with Real Hardware
 
-To thoroughly test all library functionalities on physical 70mai camera hardware, follow these steps:
+To test all library functionalities on physical 70mai camera hardware:
 
-### Prerequisites & Setup
-
-1. **Power on the 70mai dashcam** and ensure Wi-Fi hotspot mode is enabled on the camera (Wi-Fi indicator light should be blinking/on).
-2. **Connect your computer or Android test phone** to the dashcam's Wi-Fi hotspot (usually SSID `70mai_d01_...` or similar, default gateway `192.168.0.1`).
+### Setup
+1. **Power on the 70mai dashcam** and ensure Wi-Fi hotspot mode is enabled on the camera.
+2. **Connect your computer or Android test phone** to the dashcam's Wi-Fi hotspot (default IP `192.168.0.1`).
 3. **Verify IP Connectivity**:
    ```bash
    ping 192.168.0.1
    ```
 
----
+### Functionality Verification Checklist
 
-### Step-by-Step Functionality Verification Checklist
-
-#### Test 1: Full Pairing Handshake (`pair()`)
-- **Action**: Run `client.pair()`.
-- **Expected Result**:
-  1. The client sends `BindByBanya.cgi` and prints the prompt asking you to press the camera power button.
-  2. Press the physical power/confirmation button on the 70mai dashcam within 100 seconds.
-  3. The camera confirms the button press (`UserconfirmByBanya.cgi`), and `pair()` returns a 32-character session token string.
-
-#### Test 2: Client Keep-Alive Registration (`register()`)
-- **Action**: Call `client.register("192.168.0.2")`.
-- **Expected Result**: Returns `true`. The camera acknowledges the active client IP address.
-
-#### Test 3: Access Album Mode Toggle (`setAlbumMode()`)
-- **Action**: Call `client.setAlbumMode(true)`.
-- **Expected Result**: Returns `true`. The dashcam will emit a voice prompt or chime indicating recording is paused and album mode is active.
-
-#### Test 4: Category File Counts (`getFileCounts()`)
-- **Action**: Call `client.getFileCounts()`.
-- **Expected Result**: Returns a map of `Category` to integer counts (e.g., `{NORMAL=14, EVENT=2, PHOTO=5}`).
-
-#### Test 5: Category File Listing (`listFiles()`)
-- **Action**: Iterate over categories (`Category.NORMAL`, `Category.EVENT`, `Category.PHOTO`) and call `client.listFiles(category)`.
-- **Expected Result**:
-  - Returns lists of `FileEntry` objects populated with remote `path`, `name`, and positive byte `size`.
-  - Pagination automatically handles catalog pages larger than 100 entries.
-
-#### Test 6: File Download & Streaming (`openFile()`)
-- **Action**: Call `client.openFile(entry)` on a test video file and stream the first 1 MB to a local file.
-- **Expected Result**: An open `InputStream` returns the raw MP4 video bytes without HTTP error codes (e.g., HTTP 200/206).
-
-#### Test 7: Metadata Probing (`getFileInfo()`)
-- **Action**: Call `client.getFileInfo("Normal", "NO20240101-120000.MP4")`.
-- **Expected Result**: Returns `FileInfo` object with expected file size in bytes and last modified timestamp parsed from HTTP headers.
-
-#### Test 8: Remote File Deletion (`delete()`)
-- **Action**: Take a test photo on the camera (`Category.PHOTO`), retrieve file list, and call `client.delete(photoEntry)`.
-- **Expected Result**:
-  - Executed without throwing `Mai70Exception`.
-  - Re-querying `listFiles(Category.PHOTO)` confirms the file is no longer present on the camera SD card.
+1. **Pairing Handshake (`pair()`)**: Execute `client.pair()`, press physical power button on dashcam when prompted, verify returns token.
+2. **Client Registration (`register()`)**: Call `client.register("192.168.0.2")`, verify returns `true`.
+3. **Album Access Mode (`setAlbumMode()`)**: Call `client.setAlbumMode(true)`, verify camera pauses recording.
+4. **Category File Counts (`getFileCounts()`)**: Call `client.getFileCounts()`, verify returns category counts map.
+5. **Category File Listing (`listFiles()`)**: Call `client.listFiles(Category.NORMAL)`, verify list of `FileEntry` items returned.
+6. **File Downloading (`openFile()`)**: Call `client.openFile(entry)`, stream bytes from open `InputStream`.
+7. **Metadata Probing (`getFileInfo()`)**: Call `client.getFileInfo("Normal", "filename.MP4")`, verify metadata returned.
+8. **File Deletion (`delete()`)**: Call `client.delete(entry)`, verify file removed from camera storage.

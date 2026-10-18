@@ -1,4 +1,4 @@
-package me.zhanghai.android.files.provider.mai70.protocol.http
+package com.mai70.protocol.http
 
 import java.io.InputStream
 

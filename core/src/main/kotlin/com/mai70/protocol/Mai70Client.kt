@@ -1,10 +1,10 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
-import me.zhanghai.android.files.provider.mai70.protocol.http.HttpTransport
-import me.zhanghai.android.files.provider.mai70.protocol.models.Authority
-import me.zhanghai.android.files.provider.mai70.protocol.models.Category
-import me.zhanghai.android.files.provider.mai70.protocol.models.FileEntry
-import me.zhanghai.android.files.provider.mai70.protocol.models.FileInfo
+import com.mai70.protocol.http.HttpTransport
+import com.mai70.protocol.models.Authority
+import com.mai70.protocol.models.Category
+import com.mai70.protocol.models.FileEntry
+import com.mai70.protocol.models.FileInfo
 import java.io.InputStream
 import java.time.Instant
 import java.time.format.DateTimeFormatter

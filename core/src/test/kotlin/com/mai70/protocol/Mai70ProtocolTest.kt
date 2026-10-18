@@ -1,7 +1,7 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
-import me.zhanghai.android.files.provider.mai70.protocol.models.Authority
-import me.zhanghai.android.files.provider.mai70.protocol.models.Category
+import com.mai70.protocol.models.Authority
+import com.mai70.protocol.models.Category
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

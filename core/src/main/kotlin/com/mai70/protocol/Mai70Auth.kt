@@ -1,8 +1,8 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
 import kotlinx.coroutines.delay
-import me.zhanghai.android.files.provider.mai70.protocol.http.HttpTransport
-import me.zhanghai.android.files.provider.mai70.protocol.models.Authority
+import com.mai70.protocol.http.HttpTransport
+import com.mai70.protocol.models.Authority
 import kotlin.random.Random
 
 /**

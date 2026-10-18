@@ -1,4 +1,4 @@
-package me.zhanghai.android.files.provider.mai70.protocol
+package com.mai70.protocol
 
 import java.io.IOException
 
