@@ -151,10 +151,16 @@ class MainActivity : AppCompatActivity() {
         val bytesRead = withContext(Dispatchers.IO) {
             client.getThumbnail(targetFile).use { input: InputStream ->
                 val buffer = ByteArray(4096)
-                input.read(buffer)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count <= 0) break
+                    total += count
+                }
+                total
             }
         }
-        log("<-- Successfully opened thumbnail stream and read $bytesRead header bytes.")
+        log("<-- Successfully opened thumbnail stream and read $bytesRead thumbnail bytes.")
     }
 
     private suspend fun deleteLast(client: Mai70Client) {

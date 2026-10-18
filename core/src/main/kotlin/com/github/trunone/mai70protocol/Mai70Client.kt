@@ -354,10 +354,30 @@ class Mai70Client(
         prepareCameraAccess()
         val candidates = getThumbnailUrlCandidates(categoryName, fileName, remotePath)
         for (url in candidates) {
-            val stream = transport.openStream(url)
-            if (stream != null) {
-                return stream
+            val stream = transport.openStream(url) ?: continue
+            val headerBuffer = ByteArray(512)
+            val initialBytesRead = try {
+                stream.read(headerBuffer)
+            } catch (_: Exception) {
+                stream.close()
+                continue
             }
+
+            if (initialBytesRead <= 0) {
+                stream.close()
+                continue
+            }
+
+            val headerText = String(headerBuffer, 0, initialBytesRead, Charsets.UTF_8)
+            if (headerText.trimStart().startsWith("{") &&
+                (headerText.contains("ResultCode") || headerText.contains("status") || headerText.contains("Result"))
+            ) {
+                stream.close()
+                continue
+            }
+
+            val prefixStream = java.io.ByteArrayInputStream(headerBuffer, 0, initialBytesRead)
+            return java.io.SequenceInputStream(prefixStream, stream)
         }
         throw Mai70FileNotFoundException("Failed to open thumbnail for $fileName from candidates: $candidates")
     }
