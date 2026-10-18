@@ -1,6 +1,6 @@
-package com.mai70.protocol
+package com.github.trunone.mai70protocol
 
-import com.mai70.protocol.models.Authority
+import com.github.trunone.mai70protocol.models.Authority
 
 /**
  * Persistence abstraction for 70mai session tokens.

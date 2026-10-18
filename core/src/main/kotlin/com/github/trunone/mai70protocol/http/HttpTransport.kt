@@ -1,4 +1,4 @@
-package com.mai70.protocol.http
+package com.github.trunone.mai70protocol.http
 
 import java.io.InputStream
 

@@ -1,4 +1,4 @@
-package com.mai70.protocol
+package com.github.trunone.mai70protocol
 
 import java.io.IOException
 

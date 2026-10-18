@@ -1,12 +1,9 @@
-package com.mai70.protocol
+package com.github.trunone.mai70protocol
 
-import com.mai70.protocol.models.Authority
-import com.mai70.protocol.models.Category
-import com.mai70.protocol.models.FileEntry
+import com.github.trunone.mai70protocol.models.Authority
+import com.github.trunone.mai70protocol.models.Category
+import com.github.trunone.mai70protocol.models.FileEntry
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

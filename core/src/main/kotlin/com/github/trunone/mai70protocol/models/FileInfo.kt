@@ -1,4 +1,4 @@
-package com.mai70.protocol.models
+package com.github.trunone.mai70protocol.models
 
 import java.time.Instant
 

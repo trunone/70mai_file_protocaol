@@ -1,9 +1,9 @@
-package com.mai70.protocol
+package com.github.trunone.mai70protocol
 
 import kotlinx.coroutines.runBlocking
-import com.mai70.protocol.http.HttpTransport
-import com.mai70.protocol.models.Category
-import com.mai70.protocol.models.FileEntry
+import com.github.trunone.mai70protocol.http.HttpTransport
+import com.github.trunone.mai70protocol.models.Category
+import com.github.trunone.mai70protocol.models.FileEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue

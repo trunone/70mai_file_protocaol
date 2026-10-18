@@ -1,4 +1,4 @@
-package com.mai70.protocol.models
+package com.github.trunone.mai70protocol.models
 
 /**
  * Represents camera authority parameters including host, port, and authentication token.

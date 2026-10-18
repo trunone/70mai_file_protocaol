@@ -1,8 +1,8 @@
-package com.mai70.protocol
+package com.github.trunone.mai70protocol
 
 import kotlinx.coroutines.delay
-import com.mai70.protocol.http.HttpTransport
-import com.mai70.protocol.models.Authority
+import com.github.trunone.mai70protocol.http.HttpTransport
+import com.github.trunone.mai70protocol.models.Authority
 import kotlin.random.Random
 
 /**

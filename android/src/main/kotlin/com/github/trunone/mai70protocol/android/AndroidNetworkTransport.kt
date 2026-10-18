@@ -1,4 +1,4 @@
-package com.mai70.protocol.android
+package com.github.trunone.mai70protocol.android
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -8,7 +8,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.mai70.protocol.http.HttpTransport
+import com.github.trunone.mai70protocol.http.HttpTransport
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException

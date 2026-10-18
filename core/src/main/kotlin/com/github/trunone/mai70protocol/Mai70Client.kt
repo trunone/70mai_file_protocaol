@@ -1,10 +1,10 @@
-package com.mai70.protocol
+package com.github.trunone.mai70protocol
 
-import com.mai70.protocol.http.HttpTransport
-import com.mai70.protocol.models.Authority
-import com.mai70.protocol.models.Category
-import com.mai70.protocol.models.FileEntry
-import com.mai70.protocol.models.FileInfo
+import com.github.trunone.mai70protocol.http.HttpTransport
+import com.github.trunone.mai70protocol.models.Authority
+import com.github.trunone.mai70protocol.models.Category
+import com.github.trunone.mai70protocol.models.FileEntry
+import com.github.trunone.mai70protocol.models.FileInfo
 import java.io.InputStream
 import java.time.Instant
 import java.time.format.DateTimeFormatter

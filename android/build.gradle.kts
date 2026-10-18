@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mai70.protocol.android"
+    namespace = "com.github.trunone.mai70protocol.android"
     compileSdk = 34
 
     defaultConfig {

@@ -64,9 +64,9 @@ This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
 ### Android Integration (Automatic Wi-Fi Network Binding)
 
 ```kotlin
-import com.mai70.protocol.Mai70Client
-import com.mai70.protocol.android.AndroidNetworkTransport
-import com.mai70.protocol.models.Category
+import com.github.trunone.mai70protocol.Mai70Client
+import com.github.trunone.mai70protocol.android.AndroidNetworkTransport
+import com.github.trunone.mai70protocol.models.Category
 
 suspend fun syncDashcamFiles(context: Context) {
     // 1. Create Android HTTP transport (routes requests through camera Wi-Fi even with cellular data enabled)
@@ -98,11 +98,11 @@ suspend fun syncDashcamFiles(context: Context) {
 ### Pure Kotlin / JVM Integration
 
 ```kotlin
-import com.mai70.protocol.Mai70Client
-import com.mai70.protocol.TokenStore
-import com.mai70.protocol.http.HttpTransport
-import com.mai70.protocol.models.Authority
-import com.mai70.protocol.models.Category
+import com.github.trunone.mai70protocol.Mai70Client
+import com.github.trunone.mai70protocol.TokenStore
+import com.github.trunone.mai70protocol.http.HttpTransport
+import com.github.trunone.mai70protocol.models.Authority
+import com.github.trunone.mai70protocol.models.Category
 
 class FileTokenStore : TokenStore {
     private var token: String? = null
