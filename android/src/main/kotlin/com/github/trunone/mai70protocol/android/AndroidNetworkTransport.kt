@@ -51,9 +51,9 @@ class AndroidNetworkTransport(
         /** Default reusable [OkHttpClient] instance with standard timeouts */
         val defaultOkHttpClient: OkHttpClient by lazy {
             OkHttpClient.Builder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(20, TimeUnit.SECONDS)
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(15, TimeUnit.SECONDS)
                 .build()
         }
     }
@@ -152,12 +152,33 @@ class AndroidNetworkTransport(
         }
     }
 
+    private fun buildRequest(url: String): Request {
+        return Request.Builder()
+            .url(url)
+            .header("User-Agent", "70mai")
+            .build()
+    }
+
     override suspend fun get(url: String): String? = withContext(Dispatchers.IO) {
+        updateNetworkInfo()
+        val request = buildRequest(url)
+
+        // Try with socket-factory bound camera client if available
+        if (url.contains(defaultCameraIp) && cameraClient != null) {
+            try {
+                cameraClient!!.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        return@withContext response.body?.string()
+                    }
+                }
+            } catch (_: IOException) {
+                // Fall back to default client
+            }
+        }
+
+        // Default client fallback
         try {
-            updateNetworkInfo()
-            val request = Request.Builder().url(url).build()
-            val activeClient = getOkHttpClientForUrl(url)
-            activeClient.newCall(request).execute().use { response ->
+            client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext null
                 response.body?.string()
             }
@@ -167,11 +188,24 @@ class AndroidNetworkTransport(
     }
 
     override suspend fun openStream(url: String): InputStream? = withContext(Dispatchers.IO) {
+        updateNetworkInfo()
+        val request = buildRequest(url)
+
+        if (url.contains(defaultCameraIp) && cameraClient != null) {
+            try {
+                val response = cameraClient!!.newCall(request).execute()
+                if (response.isSuccessful && response.body != null) {
+                    return@withContext response.body!!.byteStream()
+                } else {
+                    response.close()
+                }
+            } catch (_: IOException) {
+                // Fall back to default client
+            }
+        }
+
         try {
-            updateNetworkInfo()
-            val request = Request.Builder().url(url).build()
-            val activeClient = getOkHttpClientForUrl(url)
-            val response = activeClient.newCall(request).execute()
+            val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 response.close()
                 return@withContext null
@@ -187,26 +221,26 @@ class AndroidNetworkTransport(
     }
 
     override suspend fun probe(url: String): Pair<Long, String?>? = withContext(Dispatchers.IO) {
+        updateNetworkInfo()
+        val activeClient = getOkHttpClientForUrl(url)
+
+        // Try HEAD request first
         try {
-            updateNetworkInfo()
-            val activeClient = getOkHttpClientForUrl(url)
-
-            // Try HEAD request first
-            try {
-                val headRequest = Request.Builder().url(url).head().build()
-                activeClient.newCall(headRequest).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val length = response.header("Content-Length")?.toLongOrNull() ?: 0L
-                        val lastModified = response.header("Last-Modified")
-                        return@withContext Pair(length, lastModified)
-                    }
+            val headRequest = Request.Builder().url(url).header("User-Agent", "70mai").head().build()
+            activeClient.newCall(headRequest).execute().use { response ->
+                if (response.isSuccessful) {
+                    val length = response.header("Content-Length")?.toLongOrNull() ?: 0L
+                    val lastModified = response.header("Last-Modified")
+                    return@withContext Pair(length, lastModified)
                 }
-            } catch (_: Exception) {
-                // Fall back to Range request
             }
+        } catch (_: Exception) {
+            // Fall back to Range request
+        }
 
-            // Range request fallback
-            val rangeRequest = Request.Builder().url(url).header("Range", "bytes=0-0").build()
+        // Range request fallback
+        try {
+            val rangeRequest = Request.Builder().url(url).header("User-Agent", "70mai").header("Range", "bytes=0-0").build()
             activeClient.newCall(rangeRequest).execute().use { response ->
                 if (response.isSuccessful || response.code == 416) {
                     val contentRange = response.header("Content-Range")
@@ -219,9 +253,9 @@ class AndroidNetworkTransport(
                     return@withContext Pair(size, lastModified)
                 }
             }
-            null
-        } catch (_: IOException) {
-            null
+        } catch (_: Exception) {
+            // Ignore
         }
+        null
     }
 }

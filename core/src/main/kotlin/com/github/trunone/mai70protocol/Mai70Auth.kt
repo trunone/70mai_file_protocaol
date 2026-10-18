@@ -16,7 +16,7 @@ class Mai70Auth(
 
     /**
      * Executes the pairing handshake:
-     * 1. Call `BindByBanya.cgi`
+     * 1. Call `BindByBanya.cgi` with robust query format fallbacks
      * 2. Poll `UserconfirmByBanya.cgi` until button press confirmed
      * 3. Register client keep-alive
      *
@@ -31,39 +31,94 @@ class Mai70Auth(
         maxAttempts: Int = 20,
         delayMs: Long = 5000
     ): String {
-        // Step 1: BindByBanya
         val userId = Random.nextInt(100000, 999999).toString()
-        val key1 = Mai70Protocol.calculateMD5(userId + Mai70Protocol.PAIRING_SALT)
-        val bindUrl = "http://$host:$port/cgi-bin/BindByBanya.cgi?&-usr=$userId&-signkey=$key1"
+        val timestamp = (System.currentTimeMillis() / 1000L).toString()
 
-        val bindResponse = transport.get(bindUrl)
-            ?: throw Mai70PairingException("Empty response from BindByBanya")
+        // Step 1: BindByBanya with fallback candidate formats
+        val bindCandidates = listOf(
+            // Format 0: Standard leading & after ?
+            run {
+                val qp = "&-usr=$userId"
+                val sign = Mai70Protocol.calculateMD5("BindByBanya.cgi?$qp" + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/BindByBanya.cgi?$qp&-signkey=$sign"
+            },
+            // Format 1: Direct key-value with userId + salt hash
+            run {
+                val sign = Mai70Protocol.calculateMD5(userId + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/BindByBanya.cgi?&-usr=$userId&-signkey=$sign"
+            },
+            // Format 2: Without leading &
+            run {
+                val qp = "-usr=$userId"
+                val sign = Mai70Protocol.calculateMD5("BindByBanya.cgi?$qp" + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/BindByBanya.cgi?$qp&-signkey=$sign"
+            },
+            // Format 3: With timestamp
+            run {
+                val qp = "&-usr=$userId&-timestamp=$timestamp"
+                val sign = Mai70Protocol.calculateMD5("BindByBanya.cgi?$qp" + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/BindByBanya.cgi?$qp&-signkey=$sign"
+            },
+            // Format 4: Standard parameters without '-'
+            run {
+                val qp = "usr=$userId"
+                val sign = Mai70Protocol.calculateMD5("BindByBanya.cgi?$qp" + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/BindByBanya.cgi?$qp&signkey=$sign"
+            }
+        )
 
-        if (!Mai70Protocol.isSuccessResponse(bindResponse)) {
-            throw Mai70PairingException("BindByBanya failed: $bindResponse")
+        var bindResponse: String? = null
+        for (bindUrl in bindCandidates) {
+            val response = transport.get(bindUrl)
+            if (response != null && Mai70Protocol.isSuccessResponse(response)) {
+                bindResponse = response
+                break
+            }
+        }
+
+        if (bindResponse == null) {
+            throw Mai70PairingException("Empty or failed response from BindByBanya across candidate URLs. Check camera Wi-Fi connection.")
         }
 
         val token = Mai70Protocol.extractJsonValue(bindResponse, "Token")
-        val timestamp = Mai70Protocol.extractJsonValue(bindResponse, "timestamp")
+        val bindTimestamp = Mai70Protocol.extractJsonValue(bindResponse, "timestamp").ifEmpty { timestamp }
 
-        if (token.isEmpty() || timestamp.isEmpty()) {
-            throw Mai70PairingException("Failed to extract token or timestamp from BindByBanya response")
+        if (token.isEmpty()) {
+            throw Mai70PairingException("Failed to extract token from BindByBanya response: $bindResponse")
         }
 
         // Step 2: UserconfirmByBanya
-        val key2 = Mai70Protocol.calculateMD5(timestamp + Mai70Protocol.PAIRING_SALT)
-        val confirmUrl = "http://$host:$port/cgi-bin/UserconfirmByBanya.cgi?&-timestamp=$timestamp&-signkey=$key2"
+        val confirmCandidates = listOf(
+            run {
+                val qp = "&-timestamp=$bindTimestamp"
+                val sign = Mai70Protocol.calculateMD5(bindTimestamp + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/UserconfirmByBanya.cgi?$qp&-signkey=$sign"
+            },
+            run {
+                val qp = "-timestamp=$bindTimestamp"
+                val sign = Mai70Protocol.calculateMD5("UserconfirmByBanya.cgi?$qp" + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/UserconfirmByBanya.cgi?$qp&-signkey=$sign"
+            },
+            run {
+                val qp = "timestamp=$bindTimestamp"
+                val sign = Mai70Protocol.calculateMD5("UserconfirmByBanya.cgi?$qp" + Mai70Protocol.PAIRING_SALT)
+                "http://$host:$port/cgi-bin/UserconfirmByBanya.cgi?$qp&signkey=$sign"
+            }
+        )
 
         onWaitingForButton()
 
         var confirmedToken: String? = null
         for (attempt in 1..maxAttempts) {
-            val confirmResponse = transport.get(confirmUrl)
-            if (confirmResponse != null && Mai70Protocol.isSuccessResponse(confirmResponse)) {
-                val finalToken = Mai70Protocol.extractJsonValue(confirmResponse, "Token")
-                confirmedToken = finalToken.ifEmpty { token }
-                break
+            for (confirmUrl in confirmCandidates) {
+                val confirmResponse = transport.get(confirmUrl)
+                if (confirmResponse != null && Mai70Protocol.isSuccessResponse(confirmResponse)) {
+                    val finalToken = Mai70Protocol.extractJsonValue(confirmResponse, "Token")
+                    confirmedToken = finalToken.ifEmpty { token }
+                    break
+                }
             }
+            if (confirmedToken != null) break
             if (attempt < maxAttempts) {
                 delay(delayMs)
             }
