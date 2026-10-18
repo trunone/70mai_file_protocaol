@@ -87,6 +87,11 @@ suspend fun syncDashcamFiles(context: Context) {
     for (video in normalVideos) {
         println("Found video: ${video.name} (${video.size} bytes)")
 
+        // Fetch thumbnail stream
+        client.getThumbnail(video).use { thumbnailStream ->
+            // Save or display video thumbnail
+        }
+
         // Open file stream to download/save locally
         client.openFile(video).use { inputStream ->
             // Save or stream video contents
@@ -153,6 +158,7 @@ To test all library functionalities on physical 70mai camera hardware:
 3. **Album Access Mode (`setAlbumMode()`)**: Call `client.setAlbumMode(true)`, verify camera pauses recording.
 4. **Category File Counts (`getFileCounts()`)**: Call `client.getFileCounts()`, verify returns category counts map.
 5. **Category File Listing (`listFiles()`)**: Call `client.listFiles(Category.NORMAL)`, verify list of `FileEntry` items returned.
-6. **File Downloading (`openFile()`)**: Call `client.openFile(entry)`, stream bytes from open `InputStream`.
-7. **Metadata Probing (`getFileInfo()`)**: Call `client.getFileInfo("Normal", "filename.MP4")`, verify metadata returned.
-8. **File Deletion (`delete()`)**: Call `client.delete(entry)`, verify file removed from camera storage.
+6. **Thumbnail Retrieval (`getThumbnail()`)**: Call `client.getThumbnail(entry)`, stream thumbnail image bytes from `InputStream`.
+7. **File Downloading (`openFile()`)**: Call `client.openFile(entry)`, stream bytes from open `InputStream`.
+8. **Metadata Probing (`getFileInfo()`)**: Call `client.getFileInfo("Normal", "filename.MP4")`, verify metadata returned.
+9. **File Deletion (`delete()`)**: Call `client.delete(entry)`, verify file removed from camera storage.

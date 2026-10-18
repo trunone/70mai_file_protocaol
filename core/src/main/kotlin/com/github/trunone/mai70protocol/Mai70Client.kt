@@ -234,6 +234,78 @@ class Mai70Client(
     }
 
     /**
+     * Builds candidate HTTP thumbnail URLs for a file.
+     *
+     * Generates signed CGI thumbnail endpoint URLs as well as direct static HTTP thumbnail file candidates.
+     *
+     * @param categoryName Folder/category name (e.g. "Normal").
+     * @param fileName File name (e.g. "NO20240101-120000-000100.MP4").
+     * @param remotePath Optional remote directory path as reported by camera.
+     * @return List of distinct candidate URLs for retrieving the file's thumbnail.
+     */
+    fun getThumbnailUrlCandidates(
+        categoryName: String,
+        fileName: String,
+        remotePath: String? = null
+    ): List<String> {
+        val candidates = mutableListOf<String>()
+        val cleanCategory = categoryName.removePrefix("/").removeSuffix("/")
+        val cacheKey = "$host:$port/$cleanCategory/$fileName"
+        val cachedEntry = fileEntriesCache[cacheKey]
+
+        val authority = getAuthority()
+        val timestamp = System.currentTimeMillis() / 1000L
+
+        val paths = mutableListOf<String>()
+        if (cachedEntry != null) {
+            paths.add(cachedEntry.path.removePrefix("/").removeSuffix("/"))
+        }
+        if (!remotePath.isNullOrEmpty()) {
+            paths.add(remotePath.removePrefix("/").removeSuffix("/"))
+        }
+        paths.add(cleanCategory)
+        paths.add("sd/$cleanCategory")
+        paths.add("")
+
+        val distinctPaths = paths.distinct()
+
+        // 1. Signed CGI endpoints
+        val cgiPaths = listOf("getthumbnail.cgi?", "getthumb.cgi?", "getfilethumb.cgi?")
+        for (p in distinctPaths) {
+            for (cgi in cgiPaths) {
+                if (p.isNotEmpty()) {
+                    candidates.add(Mai70Protocol.buildCgiUrl(authority, cgi, "-path=$p&-name=$fileName&-timestamp=$timestamp"))
+                } else {
+                    candidates.add(Mai70Protocol.buildCgiUrl(authority, cgi, "-name=$fileName&-timestamp=$timestamp"))
+                }
+            }
+        }
+
+        // 2. Direct static HTTP candidates
+        val baseName = if (fileName.contains('.')) fileName.substringBeforeLast('.') else fileName
+        val thmNameCandidates = listOf(
+            "$baseName.THM",
+            "$baseName.thm",
+            "$baseName.JPG",
+            "$baseName.jpg",
+            "${baseName}_THUMB.JPG",
+            "${baseName}_thm.jpg",
+            fileName
+        ).distinct()
+
+        for (p in distinctPaths) {
+            val prefix = if (p.isEmpty()) "" else "$p/"
+            for (thmName in thmNameCandidates) {
+                candidates.add("http://$host:$port/${prefix}THUMB/$thmName")
+                candidates.add("http://$host:$port/${prefix}.THUMB/$thmName")
+                candidates.add("http://$host:$port/$prefix$thmName")
+            }
+        }
+
+        return candidates.distinct()
+    }
+
+    /**
      * Opens an [InputStream] to download entry contents.
      *
      * Tries candidate URLs in order.
@@ -248,6 +320,66 @@ class Mai70Client(
             }
         }
         throw Mai70FileNotFoundException("Failed to open remote file ${entry.name} from candidates: $candidates")
+    }
+
+    /**
+     * Opens an [InputStream] to retrieve thumbnail contents for a given file entry.
+     *
+     * Prepares camera access and tries candidate thumbnail URLs sequentially.
+     *
+     * @param entry Target file entry.
+     * @return Open [InputStream] with thumbnail image data.
+     * @throws Mai70FileNotFoundException if thumbnail could not be opened from any candidate URL.
+     */
+    suspend fun getThumbnail(entry: FileEntry): InputStream {
+        return getThumbnail(entry.category.categoryName, entry.name, entry.path)
+    }
+
+    /**
+     * Opens an [InputStream] to retrieve thumbnail contents for a category name and file name.
+     *
+     * Prepares camera access and tries candidate thumbnail URLs sequentially.
+     *
+     * @param categoryName Category or folder name (e.g. "Normal").
+     * @param fileName File name (e.g. "NO20240101-120000-000100.MP4").
+     * @param remotePath Optional remote directory path as reported by camera.
+     * @return Open [InputStream] with thumbnail image data.
+     * @throws Mai70FileNotFoundException if thumbnail could not be opened from any candidate URL.
+     */
+    suspend fun getThumbnail(
+        categoryName: String,
+        fileName: String,
+        remotePath: String? = null
+    ): InputStream {
+        prepareCameraAccess()
+        val candidates = getThumbnailUrlCandidates(categoryName, fileName, remotePath)
+        for (url in candidates) {
+            val stream = transport.openStream(url) ?: continue
+            val headerBuffer = ByteArray(512)
+            val initialBytesRead = try {
+                stream.read(headerBuffer)
+            } catch (_: Exception) {
+                stream.close()
+                continue
+            }
+
+            if (initialBytesRead <= 0) {
+                stream.close()
+                continue
+            }
+
+            val headerText = String(headerBuffer, 0, initialBytesRead, Charsets.UTF_8)
+            if (headerText.trimStart().startsWith("{") &&
+                (headerText.contains("ResultCode") || headerText.contains("status") || headerText.contains("Result"))
+            ) {
+                stream.close()
+                continue
+            }
+
+            val prefixStream = java.io.ByteArrayInputStream(headerBuffer, 0, initialBytesRead)
+            return java.io.SequenceInputStream(prefixStream, stream)
+        }
+        throw Mai70FileNotFoundException("Failed to open thumbnail for $fileName from candidates: $candidates")
     }
 
     /**

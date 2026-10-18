@@ -99,6 +99,12 @@
                 android:text="Download Sample Stream" />
 
             <Button
+                android:id="@+id/btnGetThumbnailSample"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Get Thumbnail Stream" />
+
+            <Button
                 android:id="@+id/btnDeleteLast"
                 android:layout_width="0dp"
                 android:layout_columnWeight="1"
