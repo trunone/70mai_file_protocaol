@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "70mai-protocol"
 include(":core")
 include(":android")
+include(":sample")

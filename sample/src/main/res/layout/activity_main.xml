@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="70mai Protocol Test Controller"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <EditText
+            android:id="@+id/editIp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:hint="Camera IP (192.168.0.1)"
+            android:inputType="text"
+            android:text="192.168.0.1" />
+
+        <EditText
+            android:id="@+id/editPort"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Port (80)"
+            android:inputType="number"
+            android:text="80" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp">
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2">
+
+            <Button
+                android:id="@+id/btnPair"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Pair (Handshake)" />
+
+            <Button
+                android:id="@+id/btnRegister"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Register Client" />
+
+            <Button
+                android:id="@+id/btnAlbumModeEnable"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Enable Album Mode" />
+
+            <Button
+                android:id="@+id/btnAlbumModeDisable"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Disable Album Mode" />
+
+            <Button
+                android:id="@+id/btnGetCounts"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Get File Counts" />
+
+            <Button
+                android:id="@+id/btnListFiles"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="List Normal Files" />
+
+            <Button
+                android:id="@+id/btnDownloadSample"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Download Sample Stream" />
+
+            <Button
+                android:id="@+id/btnDeleteLast"
+                android:layout_width="0dp"
+                android:layout_columnWeight="1"
+                android:text="Delete Listed File" />
+        </GridLayout>
+    </ScrollView>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Output Log:"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <ScrollView
+        android:id="@+id/scrollLog"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#1E1E1E"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/txtLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#00FF00"
+            android:fontFamily="monospace"
+            android:textSize="12sp"
+            android:text="Ready.\n" />
+    </ScrollView>
+
+</LinearLayout>
