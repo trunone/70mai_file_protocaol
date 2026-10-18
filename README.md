@@ -131,3 +131,61 @@ suspend fun browseFileSystem(transport: HttpTransport, tokenStore: TokenStore) {
     }
 }
 ```
+
+---
+
+## Testing with Real Hardware
+
+To thoroughly test all library functionalities on physical 70mai camera hardware, follow these steps:
+
+### Prerequisites & Setup
+
+1. **Power on the 70mai dashcam** and ensure Wi-Fi hotspot mode is enabled on the camera (Wi-Fi indicator light should be blinking/on).
+2. **Connect your computer or Android test phone** to the dashcam's Wi-Fi hotspot (usually SSID `70mai_d01_...` or similar, default gateway `192.168.0.1`).
+3. **Verify IP Connectivity**:
+   ```bash
+   ping 192.168.0.1
+   ```
+
+---
+
+### Step-by-Step Functionality Verification Checklist
+
+#### Test 1: Full Pairing Handshake (`pair()`)
+- **Action**: Run `client.pair()`.
+- **Expected Result**:
+  1. The client sends `BindByBanya.cgi` and prints the prompt asking you to press the camera power button.
+  2. Press the physical power/confirmation button on the 70mai dashcam within 100 seconds.
+  3. The camera confirms the button press (`UserconfirmByBanya.cgi`), and `pair()` returns a 32-character session token string.
+
+#### Test 2: Client Keep-Alive Registration (`register()`)
+- **Action**: Call `client.register("192.168.0.2")`.
+- **Expected Result**: Returns `true`. The camera acknowledges the active client IP address.
+
+#### Test 3: Access Album Mode Toggle (`setAlbumMode()`)
+- **Action**: Call `client.setAlbumMode(true)`.
+- **Expected Result**: Returns `true`. The dashcam will emit a voice prompt or chime indicating recording is paused and album mode is active.
+
+#### Test 4: Category File Counts (`getFileCounts()`)
+- **Action**: Call `client.getFileCounts()`.
+- **Expected Result**: Returns a map of `Category` to integer counts (e.g., `{NORMAL=14, EVENT=2, PHOTO=5}`).
+
+#### Test 5: Category File Listing (`listFiles()`)
+- **Action**: Iterate over categories (`Category.NORMAL`, `Category.EVENT`, `Category.PHOTO`) and call `client.listFiles(category)`.
+- **Expected Result**:
+  - Returns lists of `FileEntry` objects populated with remote `path`, `name`, and positive byte `size`.
+  - Pagination automatically handles catalog pages larger than 100 entries.
+
+#### Test 6: File Download & Streaming (`openFile()`)
+- **Action**: Call `client.openFile(entry)` on a test video file and stream the first 1 MB to a local file.
+- **Expected Result**: An open `InputStream` returns the raw MP4 video bytes without HTTP error codes (e.g., HTTP 200/206).
+
+#### Test 7: Metadata Probing (`getFileInfo()`)
+- **Action**: Call `client.getFileInfo("Normal", "NO20240101-120000.MP4")`.
+- **Expected Result**: Returns `FileInfo` object with expected file size in bytes and last modified timestamp parsed from HTTP headers.
+
+#### Test 8: Remote File Deletion (`delete()`)
+- **Action**: Take a test photo on the camera (`Category.PHOTO`), retrieve file list, and call `client.delete(photoEntry)`.
+- **Expected Result**:
+  - Executed without throwing `Mai70Exception`.
+  - Re-querying `listFiles(Category.PHOTO)` confirms the file is no longer present on the camera SD card.
