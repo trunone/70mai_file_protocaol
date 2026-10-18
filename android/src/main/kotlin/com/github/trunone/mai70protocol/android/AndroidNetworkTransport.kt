@@ -120,7 +120,11 @@ class AndroidNetworkTransport(
             this.cameraNetwork = null
             this.cameraClient = null
 
-            val activeNetwork = connectivityManager.activeNetwork
+            val activeNetwork = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                connectivityManager.activeNetwork
+            } else {
+                null
+            }
             val activeLP = connectivityManager.getLinkProperties(activeNetwork)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

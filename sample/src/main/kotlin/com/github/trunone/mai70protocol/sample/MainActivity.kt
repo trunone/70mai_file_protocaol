@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnGetCounts).setOnClickListener { executeAction { client -> getFileCounts(client) } }
         findViewById<Button>(R.id.btnListFiles).setOnClickListener { executeAction { client -> listFiles(client) } }
         findViewById<Button>(R.id.btnDownloadSample).setOnClickListener { executeAction { client -> downloadSample(client) } }
+        findViewById<Button>(R.id.btnGetThumbnailSample).setOnClickListener { executeAction { client -> getThumbnailSample(client) } }
         findViewById<Button>(R.id.btnDeleteLast).setOnClickListener { executeAction { client -> deleteLast(client) } }
     }
 
@@ -138,6 +139,22 @@ class MainActivity : AppCompatActivity() {
             }
         }
         log("<-- Successfully opened stream and read $bytesRead header bytes.")
+    }
+
+    private suspend fun getThumbnailSample(client: Mai70Client) {
+        if (lastListedFiles.isEmpty()) {
+            log("No listed files available. Run 'List Normal Files' first.")
+            return
+        }
+        val targetFile = lastListedFiles.first()
+        log("--> Fetching thumbnail stream for ${targetFile.name}...")
+        val bytesRead = withContext(Dispatchers.IO) {
+            client.getThumbnail(targetFile).use { input: InputStream ->
+                val buffer = ByteArray(4096)
+                input.read(buffer)
+            }
+        }
+        log("<-- Successfully opened thumbnail stream and read $bytesRead header bytes.")
     }
 
     private suspend fun deleteLast(client: Mai70Client) {

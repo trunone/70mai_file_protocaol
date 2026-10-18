@@ -106,4 +106,44 @@ class Mai70ClientTest {
         assertNotNull(stream)
         assertEquals("test content", stream.bufferedReader().use { it.readText() })
     }
+
+    @Test
+    fun testGetThumbnailUrlCandidates() {
+        val transport = MockHttpTransport()
+        val client = Mai70Client(transport = transport)
+        val candidates = client.getThumbnailUrlCandidates("Normal", "FILE.MP4")
+
+        assertTrue(candidates.isNotEmpty())
+        assertTrue(candidates.any { it.contains("getthumbnail.cgi") })
+        assertTrue(candidates.any { it.contains("FILE.THM") || it.contains("FILE.JPG") })
+    }
+
+    @Test
+    fun testGetThumbnailStream() = runBlocking {
+        val transport = MockHttpTransport()
+        transport.responses["client.cgi"] = "{\"ResultCode\":0}"
+        transport.responses["setaccessalbum.cgi"] = "{\"ResultCode\":0}"
+        transport.streams["FILE.THM"] = ByteArrayInputStream("thumbnail image bytes".toByteArray())
+
+        val client = Mai70Client(transport = transport)
+        val entry = FileEntry(path = "Normal", name = "FILE.MP4", size = 1000L, category = Category.NORMAL)
+        val stream = client.getThumbnail(entry)
+
+        assertNotNull(stream)
+        assertEquals("thumbnail image bytes", stream.bufferedReader().use { it.readText() })
+    }
+
+    @Test
+    fun testGetThumbnailByCategoryAndFileName() = runBlocking {
+        val transport = MockHttpTransport()
+        transport.responses["client.cgi"] = "{\"ResultCode\":0}"
+        transport.responses["setaccessalbum.cgi"] = "{\"ResultCode\":0}"
+        transport.streams["getthumbnail.cgi"] = ByteArrayInputStream("cgi thumbnail bytes".toByteArray())
+
+        val client = Mai70Client(transport = transport)
+        val stream = client.getThumbnail("Normal", "FILE.MP4")
+
+        assertNotNull(stream)
+        assertEquals("cgi thumbnail bytes", stream.bufferedReader().use { it.readText() })
+    }
 }
