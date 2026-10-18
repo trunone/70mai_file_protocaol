@@ -24,10 +24,10 @@ android {
 }
 
 dependencies {
-    implementation(project(":core"))
+    api(project(":core"))
+    api(libs.okhttp)
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

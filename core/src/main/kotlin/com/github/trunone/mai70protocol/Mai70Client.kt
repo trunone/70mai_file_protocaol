@@ -142,7 +142,7 @@ class Mai70Client(
             val queryParams = "-start=$startIndex&-end=${startIndex + pageSize - 1}&-type=${category.type}&-timestamp=$timestamp"
             val url = Mai70Protocol.buildCgiUrl(authority, queryPath, queryParams)
 
-            var responseText = transport.get(url)
+            val responseText = transport.get(url)
             var batch = Mai70Protocol.parseFileListResponse(responseText, category)
 
             // Fallback strategy if initial batch on page 0 is empty
@@ -174,7 +174,6 @@ class Mai70Client(
                     val altBatch = Mai70Protocol.parseFileListResponse(altText, category)
                     if (!altBatch.isNullOrEmpty()) {
                         batch = altBatch
-                        responseText = altText
                         break
                     }
                 }
